@@ -102,3 +102,37 @@ Minimum et maximum pour un champ si tous les points de la série sont espacés d
   (finder max @"t")
 ]
 ```
+
+## Série la plus longue pour un champ
+
+Cet exemple permet de trouvé, pour un champ donné, le code station, la date de début et la date de fin de la plus longue série où tous les points sont exactement espacés de 6 minutes.  
+Avec ici comme exemple la température `@"t"` [**lien uat-playground**](https://uat.lisptick.org/playground?code=(def%0A%20%20start%20%20%202016-01-01%0A%20%20stop%20%20%20%202018-12-31%0A)%0A(defn%20ts%5Bfield%20code%5D%0A%20%20(timeserie%20field%20%22meteonet%22%20code%20start%20stop))%0A(defn%20is6m%5Bfield%20code%5D%0A%20%20(sign(%3D%20(delta(time-as-value(ts%20field%20code)))%206m)))%0A(defn%20usable-size%5Bfield%20code%5D%0A%20%20(def%20lis6m%20(is6m%20field%20code))%0A%20%20(-%0A%20%20%20%20(%2B%20lis6m)%0A%20%20%20%20(keep%20(%2B%20lis6m)%20(%3D%20lis6m%200))))%0A(defn%20longer-usable%5Bfield%5D%0A%20%20(map-reduce-arg%0A%20%20%20%20(fn%5Bcode%5D%20(last(prune(max(usable-size%20field%20code)))))%0A%20%20%20%20max%0A%20%20%20%20(perimeter%20%22meteonet%22)))%0A(defn%20longer-info%5Bfield%5D%0A%20%20(def%20res%20(last%20(longer-usable%20field)))%0A%20%20(str%0A%20%20%20%20%20%20%22(timeserie%20%22%20field%20%22%20%5C%22meteonet%5C%22%20%5C%22%22%0A%20%20%20%20%20%20(first(first(vget%20res)))%20%22%5C%22%20%22%0A%20%20%20%20%20%20(-%20(tget%20res)%20(*%206m%20(last%20(vget%20res))))%20%22%20%22%0A%20%20%20%20%20%20(tget%20res)%20%22)%22))%0A(longer-info%20%40%22t%22))
+
+```clojure
+(def
+  start   2016-01-01
+  stop    2018-12-31
+)
+(defn ts[field code]
+  (timeserie field "meteonet" code start stop))
+(defn is6m[field code]
+  (sign(= (delta(time-as-value(ts field code))) 6m)))
+(defn usable-size[field code]
+  (def lis6m (is6m field code))
+  (-
+    (+ lis6m)
+    (keep (+ lis6m) (= lis6m 0))))
+(defn longer-usable[field]
+  (map-reduce-arg
+    (fn[code] (last(prune(max(usable-size field code)))))
+    max
+    (perimeter "meteonet")))
+(defn longer-info[field]
+  (def res (last (longer-usable field)))
+  (str
+      "(timeserie " field " \"meteonet\" \""
+      (first(first(vget res))) "\" "
+      (- (tget res) (* 6m (last (vget res)))) " "
+      (tget res) ")"))
+(longer-info @"t")
+```
