@@ -58,19 +58,7 @@ x_train = np.reshape(x_train, (x_train.shape[0],x_train.shape[1],1))
 # Initialising the RNN
 model = Sequential()
 
-model.add(LSTM(units = 50, return_sequences = True, input_shape = (x_train.shape[1], 1)))
-model.add(Dropout(0.2))
-
-# Adding a second LSTM layer and Dropout layer
-model.add(LSTM(units = 50, return_sequences = True))
-model.add(Dropout(0.2))
-
-# Adding a third LSTM layer and Dropout layer
-model.add(LSTM(units = 50, return_sequences = True))
-model.add(Dropout(0.2))
-
-# Adding a fourth LSTM layer and and Dropout layer
-model.add(LSTM(units = 50))
+model.add(LSTM(units = 160, return_sequences = False, input_shape = (x_train.shape[1], 1)))
 model.add(Dropout(0.2))
 
 # Adding the output layer
@@ -81,7 +69,7 @@ model.add(Dense(units = 1))
 
 #compile and fit the model on 10 epochs
 model.compile(optimizer = 'adam', loss = 'mean_squared_error')
-model.fit(x_train, y_train, epochs = 10, batch_size = 10)
+model.fit(x_train, y_train, epochs = 4, batch_size = 1)
 
 #Test data set
 test_data = scaled_data[training_dataset_length - HISTORY_LAG: , : ]
