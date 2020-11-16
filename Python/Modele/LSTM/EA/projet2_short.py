@@ -88,8 +88,8 @@ test_data = scaled_data[training_dataset_length - HISTORY_LAG: , : ]
 
 #splitting the x_test and y_test data sets
 x_test = []
-y_test =  features[training_dataset_length : , : ] 
-
+y_test = features[training_dataset_length : , : ]
+previous = features[training_dataset_length-1 : -1, : ]
 for i in range(HISTORY_LAG,len(test_data)):
     x_test.append(test_data[i-HISTORY_LAG:i,0])
     
@@ -105,8 +105,9 @@ predictions = model.predict(x_test)
 predictions = scaler.inverse_transform(predictions)
 
 #Calculate RMSE score
+print("use previous RMSE:", np.sqrt(np.mean(((previous- y_test)**2))))
 rmse=np.sqrt(np.mean(((predictions- y_test)**2)))
-print(rmse)
+print("predicted RMSE:", rmse)
 
 Cpredictions = np.append(features[0:int(len(features) * .75)],predictions)
 plt.figure(1)
