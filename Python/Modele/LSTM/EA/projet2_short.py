@@ -24,7 +24,7 @@ weather = pd.read_csv(r'weather.csv')
 weather['date'] = pd.to_datetime(weather['date'], format='%Y%m%d %H:%M')
 weather.set_index('date', inplace=True)
 
-HISTORY_LAG = 240
+HISTORY_LAG = 3
 FUTURE_TARGET = 120
 
 #Scale the all of the data to be values between 0 and 1 
@@ -58,7 +58,7 @@ x_train = np.reshape(x_train, (x_train.shape[0],x_train.shape[1],1))
 # Initialising the RNN
 model = Sequential()
 
-model.add(LSTM(units = 160, return_sequences = False, input_shape = (x_train.shape[1], 1)))
+model.add(LSTM(units = 64, return_sequences = False, input_shape = (x_train.shape[1], 1)))
 model.add(Dropout(0.2))
 
 # Adding the output layer
@@ -69,7 +69,7 @@ model.add(Dense(units = 1))
 
 #compile and fit the model on 10 epochs
 model.compile(optimizer = 'adam', loss = 'mean_squared_error')
-model.fit(x_train, y_train, epochs = 4, batch_size = 1)
+model.fit(x_train, y_train, epochs = 200, batch_size = 16)
 
 #Test data set
 test_data = scaled_data[training_dataset_length - HISTORY_LAG: , : ]
