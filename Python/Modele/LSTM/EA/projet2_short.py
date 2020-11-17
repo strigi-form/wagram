@@ -58,8 +58,11 @@ x_train = np.reshape(x_train, (x_train.shape[0],x_train.shape[1],1))
 # Initialising the RNN
 model = Sequential()
 
-model.add(LSTM(units = 64, return_sequences = False, input_shape = (x_train.shape[1], 1)))
-model.add(Dropout(0.2))
+model.add(LSTM(
+    units = 64,
+    return_sequences = False,
+    recurrent_dropout=0.2,
+    input_shape = (x_train.shape[1], 1)))
 
 # Adding the output layer
 # For Full connection layer we use dense
