@@ -54,7 +54,19 @@ def main():
     print(y_train.shape)
 
     i = Input(shape=(HISTORY_LAG, 1))
-    m = TCN()(i)
+    m = TCN(nb_filters=64,
+            kernel_size=2,
+            nb_stacks=1,
+            dilations=(1, 2, 4, 8, 16, 32),
+            padding='causal',
+            use_skip_connections=False,
+            dropout_rate=0.2,
+            return_sequences=False,
+            activation='relu',
+            kernel_initializer='he_normal',
+            use_batch_norm=False,
+            use_layer_norm=False)(i)
+
     m = Dense(1, activation='linear')(m)
 
     model = Model(inputs=[i], outputs=[m])
