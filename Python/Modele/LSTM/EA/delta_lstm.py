@@ -16,13 +16,15 @@ from keras.layers import Dense, LSTM
 import array_from_uat as uat
 
 WEATHER_STA = 14578001
+START = "2016-01-01"
+STOP = "2016-01-12"
 HISTORY_LAG = 3
 
 def main():
     """lstm fit and test"""
     #Scale the all of the data to be values between 0 and 1
     scaler = MinMaxScaler(feature_range=(0, 1))
-    serie = uat.get_array(uat.TEMPERATURE, WEATHER_STA, "2016-01-01", "2016-01-12")
+    serie = uat.get_array(uat.TEMPERATURE, WEATHER_STA, START, STOP)
     serie = serie.transpose()
     features = serie[1:] - serie[:-1]
     print(features.shape)
