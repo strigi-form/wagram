@@ -21,6 +21,8 @@ WEATHER_STA = 14578001
 START = "2016-01-01"
 STOP = "2016-01-12"
 HISTORY_LAG = 3
+#predict serie or delta
+DELTA = True
 
 def main():
     """TCN fit and test"""
@@ -28,7 +30,11 @@ def main():
     scaler = MinMaxScaler(feature_range=(0, 1))
     serie = uat.get_array(uat.TEMPERATURE, WEATHER_STA, START, STOP)
     serie = serie.transpose()
-    features = serie #serie[1:] - serie[:-1]
+    if DELTA:
+        features = serie[1:] - serie[:-1]
+    else:
+        features = serie
+
     print(features.shape)
     scaled_data = scaler.fit_transform(features)
 
@@ -62,8 +68,12 @@ def main():
 
     #splitting the x_test and y_test data sets
     x_test = []
-    y_test = serie[training_dataset_length :, : ]
-    previous = serie[training_dataset_length-1: -1, : ]
+    if DELTA:
+        y_test = serie[training_dataset_length+1 :, : ]
+        previous = serie[training_dataset_length: -1, : ]
+    else:
+        y_test = serie[training_dataset_length :, : ]
+        previous = serie[training_dataset_length-1: -1, : ]
     for i in range(HISTORY_LAG, len(test_data)):
         x_test.append(test_data[i-HISTORY_LAG:i])
 
@@ -75,7 +85,8 @@ def main():
     #Undo scaling
     predict = scaler.inverse_transform(predict)
     #add back previous point
-    #predictions += serie[training_dataset_length:-1, :]
+    if DELTA:
+        predict += serie[training_dataset_length:-1, :]
 
     #Calculate RMSE score
     print("use previous RMSE:", np.sqrt(np.mean(((previous- y_test)**2))))
