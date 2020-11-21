@@ -22,7 +22,7 @@ START = "2016-01-01"
 STOP = "2016-01-12"
 HISTORY_LAG = 3
 #predict serie or delta
-DELTA = True
+DELTA = False
 
 def main():
     """TCN fit and test"""
@@ -67,7 +67,7 @@ def main():
             use_batch_norm=False,
             use_layer_norm=False)(i)
 
-    m = Dense(1, activation='linear')(m)
+    m = Dense(1)(m)
 
     model = Model(inputs=[i], outputs=[m])
 
