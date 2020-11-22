@@ -81,8 +81,8 @@ def main():
     #splitting the x_test and y_test data sets
     x_test = []
     if DELTA:
-        y_test = serie[training_dataset_length+1 :, : ]
-        previous = serie[training_dataset_length: -1, : ]
+        y_test = serie[HISTORY_LAG+1 :, : ]
+        previous = serie[HISTORY_LAG: -1, : ]
     else:
         y_test = serie[HISTORY_LAG :, : ]
         previous = serie[HISTORY_LAG-1: -1, : ]
@@ -98,13 +98,15 @@ def main():
     predict = scaler.inverse_transform(predict)
     #add back previous point
     if DELTA:
-        predict += serie[training_dataset_length:-1, :]
+        predict += serie[HISTORY_LAG:-1, :]
 
     #Calculate RMSE score
     print("use previous RMSE:",
           rmse(previous, y_test, training_dataset_length, HISTORY_LAG))
     print("predicted RMSE:",
           rmse(predict, y_test, training_dataset_length, HISTORY_LAG))
+    print("previous vs predicted RMSE:",
+          rmse(predict, previous, training_dataset_length, HISTORY_LAG))
 
     plt.figure(1)
     plt.plot(predict, color='red', label='predicted', linewidth=1.0)
