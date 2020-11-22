@@ -54,29 +54,29 @@ def main():
     print(y_train.shape)
 
     i = Input(shape=(HISTORY_LAG, 1))
-    m = TCN(nb_filters=64,
-            kernel_size=2,
-            nb_stacks=1,
-            dilations=(1, 2, 4, 8, 16, 32),
-            padding='causal',
-            use_skip_connections=False,
-            dropout_rate=0.2,
-            return_sequences=False,
-            activation='relu',
-            kernel_initializer='he_normal',
-            use_batch_norm=False,
-            use_layer_norm=False)(i)
+    layer = TCN(nb_filters=64,
+                kernel_size=2,
+                nb_stacks=1,
+                dilations=(1, 2, 4, 8, 16, 32),
+                padding='causal',
+                use_skip_connections=False,
+                dropout_rate=0.2,
+                return_sequences=False,
+                activation='relu',
+                kernel_initializer='he_normal',
+                use_batch_norm=False,
+                use_layer_norm=False)(i)
 
-    m = Dense(1)(m)
+    layer = Dense(1)(layer)
 
-    model = Model(inputs=[i], outputs=[m])
+    model = Model(inputs=[i], outputs=[layer])
 
     model.compile(optimizer='adam', loss='mean_squared_error')
 
     model.fit(x_train, y_train, epochs=200, batch_size=16)
 
     #Test data set
-    test_data = scaled_data[training_dataset_length - HISTORY_LAG:, : ]
+    test_data = scaled_data
 
     #splitting the x_test and y_test data sets
     x_test = []
@@ -84,8 +84,8 @@ def main():
         y_test = serie[training_dataset_length+1 :, : ]
         previous = serie[training_dataset_length: -1, : ]
     else:
-        y_test = serie[training_dataset_length :, : ]
-        previous = serie[training_dataset_length-1: -1, : ]
+        y_test = serie[HISTORY_LAG :, : ]
+        previous = serie[HISTORY_LAG-1: -1, : ]
     for i in range(HISTORY_LAG, len(test_data)):
         x_test.append(test_data[i-HISTORY_LAG:i])
 
@@ -101,14 +101,23 @@ def main():
         predict += serie[training_dataset_length:-1, :]
 
     #Calculate RMSE score
-    print("use previous RMSE:", np.sqrt(np.mean(((previous- y_test)**2))))
-    print("predicted RMSE:", np.sqrt(np.mean(((predict- y_test)**2))))
+    print("use previous RMSE:",
+          rmse(previous, y_test, training_dataset_length, HISTORY_LAG))
+    print("predicted RMSE:",
+          rmse(predict, y_test, training_dataset_length, HISTORY_LAG))
+    print("previous vs predicted RMSE:",
+          rmse(predict, previous, training_dataset_length, HISTORY_LAG))
 
     plt.figure(1)
     plt.plot(predict, color='red', label='predicted', linewidth=1.0)
     plt.plot(y_test, color='blue', label='actual', linewidth=1.0)
+    plt.axvline(x=training_dataset_length-HISTORY_LAG)
     plt.legend(['predicted', 'actual'])
     plt.show()
+
+def rmse(predict, ref, training_length, lag):
+    """Compute Root Mean Square Error after training data"""
+    return np.sqrt(np.mean((predict[training_length+lag:] - ref[training_length+lag:])**2))
 
 if __name__ == "__main__":
     main()
