@@ -5,6 +5,7 @@ Create by cedric.joulain@gmail.com on Fri Nov 20 2020
 
 import math
 
+import multiprocessing as mp
 import numpy as np # linear algebra
 
 import matplotlib.pyplot as plt
@@ -20,18 +21,20 @@ import array_from_uat as uat
 WEATHER_STA = 14578001
 START = "2016-01-01"
 STOP = "2016-01-12"
-HISTORY_LAG = 3
+HISTORY_LAG = 10
 #predict serie or delta
 DELTA = False
 
 def main():
-    rmse = fit_tcn()
-    print("TCN RMSE:", rmse)
+    #/2 as hyper threading is probably on
+    with mp.Pool(int(mp.cpu_count()/2)) as p:
+        rmses = np.array(p.map(fit_tcn, [6]*8))
+    print(rmses)
 
-def fit_tcn(verbose=1, epochs=200, batch_size=16):
-    i = Input(shape=(HISTORY_LAG, 1))
+def fit_tcn(kernel_size=2, lag=HISTORY_LAG, verbose=0, epochs=200, batch_size=16):
+    i = Input(shape=(lag, 1))
     layer = TCN(nb_filters=64,
-                kernel_size=2,
+                kernel_size=kernel_size,
                 nb_stacks=1,
                 dilations=(1, 2, 4, 8, 16, 32),
                 padding='causal',
@@ -46,9 +49,11 @@ def fit_tcn(verbose=1, epochs=200, batch_size=16):
     layer = Dense(1)(layer)
 
     model = Model(inputs=[i], outputs=[layer])
-    return fit(model, verbose=verbose, epochs=epochs, batch_size=batch_size)
+    result = fit(model, lag=lag, verbose=verbose, epochs=epochs, batch_size=batch_size)
+    print("TCN lag:", lag, "ksize:", kernel_size, "rmse:", result)
+    return result
 
-def fit(model, verbose=1, epochs=200, batch_size=16):
+def fit(model, lag=HISTORY_LAG, verbose=1, epochs=200, batch_size=16):
     """Fit model and return RMSE on test data"""
     #Scale the all of the data to be values between 0 and 1
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -69,8 +74,8 @@ def fit(model, verbose=1, epochs=200, batch_size=16):
     #Splitting the data
     x_train = []
     y_train = []
-    for i in range(HISTORY_LAG, len(train_data)):
-        x_train.append(train_data[i-HISTORY_LAG:i])
+    for i in range(lag, len(train_data)):
+        x_train.append(train_data[i-lag:i])
         y_train.append(train_data[i])
     x_train = np.array(x_train)
     y_train = np.array(y_train)
@@ -88,13 +93,13 @@ def fit(model, verbose=1, epochs=200, batch_size=16):
     #splitting the x_test and y_test data sets
     x_test = []
     if DELTA:
-        y_test = serie[HISTORY_LAG+1 :, : ]
-        previous = serie[HISTORY_LAG: -1, : ]
+        y_test = serie[lag+1 :, : ]
+        previous = serie[lag: -1, : ]
     else:
-        y_test = serie[HISTORY_LAG :, : ]
-        previous = serie[HISTORY_LAG-1: -1, : ]
-    for i in range(HISTORY_LAG, len(test_data)):
-        x_test.append(test_data[i-HISTORY_LAG:i])
+        y_test = serie[lag :, : ]
+        previous = serie[lag-1: -1, : ]
+    for i in range(lag, len(test_data)):
+        x_test.append(test_data[i-lag:i])
 
     #Convert x_test to a numpy array
     x_test = np.array(x_test)
@@ -105,21 +110,21 @@ def fit(model, verbose=1, epochs=200, batch_size=16):
     predict = scaler.inverse_transform(predict)
     #add back previous point
     if DELTA:
-        predict += serie[HISTORY_LAG:-1, :]
+        predict += serie[lag:-1, :]
 
     #Calculate RMSE score
-    result = rmse(predict, y_test, training_dataset_length, HISTORY_LAG)
+    result = rmse(predict, y_test, training_dataset_length, lag)
     if verbose == 1:
         print("use previous RMSE:",
-              rmse(previous, y_test, training_dataset_length, HISTORY_LAG))
+              rmse(previous, y_test, training_dataset_length, lag))
         print("predicted RMSE:", rmse)
         print("previous vs predicted RMSE:",
-              rmse(predict, previous, training_dataset_length, HISTORY_LAG))
+              rmse(predict, previous, training_dataset_length, lag))
 
         plt.figure(1)
         plt.plot(predict, color='red', label='predicted', linewidth=1.0)
         plt.plot(y_test, color='blue', label='actual', linewidth=1.0)
-        plt.axvline(x=training_dataset_length-HISTORY_LAG)
+        plt.axvline(x=training_dataset_length-lag)
         plt.legend(['predicted', 'actual'])
         plt.show()
     return result
