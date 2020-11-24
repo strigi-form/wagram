@@ -28,15 +28,15 @@ DELTA = False
 def main():
     #/2 as hyper threading is probably on
     with mp.Pool(int(mp.cpu_count()/2)) as p:
-        rmses = np.array(p.map(fit_tcn, [6]*8))
-    print(rmses)
+        rmses = np.array(p.map(fit_tcn, [32]*8))
+    print("RMSE avg:", np.mean(rmses), "min:", np.amin(rmses), "sd:", np.std(rmses))
 
-def fit_tcn(kernel_size=2, lag=HISTORY_LAG, verbose=0, epochs=200, batch_size=16):
+def fit_tcn(nb_filters=64, nb_stacks=1, kernel_size=2, lag=HISTORY_LAG, verbose=0, epochs=200, batch_size=16):
     i = Input(shape=(lag, 1))
-    layer = TCN(nb_filters=64,
+    layer = TCN(nb_filters=nb_filters,
                 kernel_size=kernel_size,
-                nb_stacks=1,
-                dilations=(1, 2, 4, 8, 16, 32),
+                nb_stacks=nb_stacks,
+                dilations=[2**i for i in range(0, int(math.log(lag)/math.log(2)))],
                 padding='causal',
                 use_skip_connections=False,
                 dropout_rate=0.2,
