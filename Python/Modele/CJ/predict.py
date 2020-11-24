@@ -12,9 +12,7 @@ import matplotlib.pyplot as plt
 
 
 from sklearn.preprocessing import MinMaxScaler
-from keras.models import Input, Model
-from keras.layers import Dense
-from tcn import TCN
+import tcn
 
 import array_from_uat as uat
 
@@ -32,23 +30,11 @@ def main():
     print("RMSE avg:", np.mean(rmses), "min:", np.amin(rmses), "sd:", np.std(rmses))
 
 def fit_tcn(nb_filters=64, nb_stacks=1, kernel_size=2, lag=HISTORY_LAG, verbose=0, epochs=200, batch_size=16):
-    i = Input(shape=(lag, 1))
-    layer = TCN(nb_filters=nb_filters,
-                kernel_size=kernel_size,
-                nb_stacks=nb_stacks,
-                dilations=[2**i for i in range(0, int(math.log(lag)/math.log(2)))],
-                padding='causal',
-                use_skip_connections=False,
-                dropout_rate=0.2,
-                return_sequences=False,
-                activation='relu',
-                kernel_initializer='he_normal',
-                use_batch_norm=False,
-                use_layer_norm=False)(i)
-
-    layer = Dense(1)(layer)
-
-    model = Model(inputs=[i], outputs=[layer])
+    dilations=[2**i for i in range(0, int(math.log(lag)/math.log(2)))]
+    model = tcn.compiled_tcn(
+        1, # num_feat
+        1, # num_classes
+        nb_filters, kernel_size, dilations, nb_stacks, lag, regression=True)
     result = fit(model, lag=lag, verbose=verbose, epochs=epochs, batch_size=batch_size)
     print("TCN lag:", lag, "ksize:", kernel_size, "rmse:", result)
     return result
@@ -83,7 +69,6 @@ def fit(model, lag=HISTORY_LAG, verbose=1, epochs=200, batch_size=16):
         print(x_train.shape)
         print(y_train.shape)
 
-    model.compile(optimizer='adam', loss='mean_squared_error')
     model.fit(x_train, y_train,
               epochs=epochs, batch_size=batch_size, verbose=verbose)
 
@@ -106,6 +91,8 @@ def fit(model, lag=HISTORY_LAG, verbose=1, epochs=200, batch_size=16):
 
     #check predicted values
     predict = model.predict(x_test)
+    #keep only next predicted value
+    predict = predict[:,-1]
     #Undo scaling
     predict = scaler.inverse_transform(predict)
     #add back previous point
@@ -117,7 +104,7 @@ def fit(model, lag=HISTORY_LAG, verbose=1, epochs=200, batch_size=16):
     if verbose == 1:
         print("use previous RMSE:",
               rmse(previous, y_test, training_dataset_length, lag))
-        print("predicted RMSE:", rmse)
+        print("predicted RMSE:", result)
         print("previous vs predicted RMSE:",
               rmse(predict, previous, training_dataset_length, lag))
 
