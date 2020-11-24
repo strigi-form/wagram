@@ -10,6 +10,7 @@ import numpy as np # linear algebra
 
 import matplotlib.pyplot as plt
 
+from geneticalgorithm import geneticalgorithm as ga
 
 from sklearn.preprocessing import MinMaxScaler
 import tcn
@@ -24,19 +25,43 @@ HISTORY_LAG = 10
 DELTA = False
 
 def main():
+    #NN input/architecture optimization
+    varbound=np.array(
+        [[1,8], #histo lag 3, 4, 8, 16, 32, 64, 128, 256
+        [4,7],  #nb_filters 16, 32, 64, 128
+        [2,8],  #kernel size from 2 to 8
+        [1,3] #nb_stacks
+        ])
+    optim=ga(function=tcn_rmse, dimension=4,variable_type='int', variable_boundaries=varbound, function_timeout=60*60)
+    optim.run()
+
+def tcn_rmse(arr):
+    """Compte RMSE from TCN described by a numpy array"""
+    #histo lag 3, 4, 8, 16, 32, 64, 128, 256
+    lag = 2**arr[0]
+    if lag == 2:
+        lag = 3
+    return fit_tcn(
+        lag=int(lag),
+        nb_filters=int(2**arr[1]),
+        kernel_size=int(arr[2]),
+        nb_stacks=int(arr[3]))
+
+def rmse_hist():
     #/2 as hyper threading is probably on
     with mp.Pool(int(mp.cpu_count()/2)) as p:
-        rmses = np.array(p.map(fit_tcn, [32]*8))
+        rmses = np.array(p.map(fit_tcn, [HISTORY_LAG]*8))
     print("RMSE avg:", np.mean(rmses), "min:", np.amin(rmses), "sd:", np.std(rmses))
 
-def fit_tcn(nb_filters=64, nb_stacks=1, kernel_size=2, lag=HISTORY_LAG, verbose=0, epochs=200, batch_size=16):
+def fit_tcn(lag=HISTORY_LAG, nb_filters=64, kernel_size=2, nb_stacks=1, verbose=0, epochs=10, batch_size=16):
+    #dilations can be infered from input size (lag)
     dilations=[2**i for i in range(0, int(math.log(lag)/math.log(2)))]
     model = tcn.compiled_tcn(
         1, # num_feat
         1, # num_classes
         nb_filters, kernel_size, dilations, nb_stacks, lag, regression=True)
     result = fit(model, lag=lag, verbose=verbose, epochs=epochs, batch_size=batch_size)
-    print("TCN lag:", lag, "ksize:", kernel_size, "rmse:", result)
+    print("TCN lag:", lag, "units:", nb_filters, "ksize:", kernel_size, "stacks:", nb_stacks, "rmse:", result)
     return result
 
 def fit(model, lag=HISTORY_LAG, verbose=1, epochs=200, batch_size=16):
