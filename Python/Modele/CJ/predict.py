@@ -20,19 +20,37 @@ import array_from_uat as uat
 WEATHER_STA = 14578001
 START = "2016-01-01"
 STOP = "2016-01-12"
-HISTORY_LAG = 10
+HISTORY_LAG = 8
 #predict serie or delta
 DELTA = False
 
 def main():
-    #NN input/architecture optimization
+    rmse_hist()
+
+def tcn_genetic():
+    """TCN input/architecture genetic optimization"""
     varbound=np.array(
-        [[1,8], #histo lag 3, 4, 8, 16, 32, 64, 128, 256
-        [4,7],  #nb_filters 16, 32, 64, 128
+        [[1,6], #histo lag 3, 4, 8, 16, 32, 64
+        [4,6],  #nb_filters 16, 32, 64
         [2,8],  #kernel size from 2 to 8
         [1,3] #nb_stacks
         ])
-    optim=ga(function=tcn_rmse, dimension=4,variable_type='int', variable_boundaries=varbound, function_timeout=60*60)
+    algorithm_parameters={
+        'max_num_iteration': None,
+        'population_size':100, #default is 100
+        'mutation_probability':0.1,
+        'elit_ratio': 0.01,
+        'crossover_probability': 0.5,
+        'parents_portion': 0.3,
+        'crossover_type':'uniform',
+        'max_iteration_without_improv':None}
+    optim=ga(
+        function=tcn_rmse,
+        dimension=4,
+        variable_type='int',
+        variable_boundaries=varbound,
+        function_timeout=60*60,
+        algorithm_parameters=algorithm_parameters)
     optim.run()
 
 def tcn_rmse(arr):
@@ -53,7 +71,7 @@ def rmse_hist():
         rmses = np.array(p.map(fit_tcn, [HISTORY_LAG]*8))
     print("RMSE avg:", np.mean(rmses), "min:", np.amin(rmses), "sd:", np.std(rmses))
 
-def fit_tcn(lag=HISTORY_LAG, nb_filters=64, kernel_size=2, nb_stacks=1, verbose=0, epochs=10, batch_size=16):
+def fit_tcn(lag=HISTORY_LAG, nb_filters=32, kernel_size=5, nb_stacks=1, verbose=0, epochs=100, batch_size=16):
     #dilations can be infered from input size (lag)
     dilations=[2**i for i in range(0, int(math.log(lag)/math.log(2)))]
     model = tcn.compiled_tcn(
