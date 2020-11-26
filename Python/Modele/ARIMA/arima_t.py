@@ -41,7 +41,7 @@ print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[4]))
 
 #utilisation de la fonction SARIMAX de statsmodels pour l'adapter au modèle ARIMA saisonnier correspondant
 #j'ai utilisé SARIMAX car au début mon jeu de donnée été de sept 2017 à dec 2017 avec une itération chaque 1H où 2H en fesont 
-#la moy ( mean() ) des valeurs de l'intervale de 1H qui permet doivre aussi de bon résultat car dans une 1h la température varie de peut. 
+#la moy ( mean() ) des valeurs de l'intervale de 1H qui permet d'avoir aussi de bon résultat car dans une 1h la température varie de peut. 
 warnings.filterwarnings("ignore")
 for param in pdq:
     for param_seasonal in seasonal_pdq:
