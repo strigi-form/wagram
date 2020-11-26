@@ -26,7 +26,10 @@ plt.show()
 # weather['t'].plot(figsize=(20, 6))
 # plt.show()
 
+# Définir les paramètres p, d et q pour prendre toute valeur comprise entre 0 et 2
 p = d = q = range(0, 2)
+
+# Générer toutes les combinaisons de p, q et q
 pdq = list(itertools.product(p, d, q))
 seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
 
@@ -36,14 +39,16 @@ print('SARIMAX: {} x {}'.format(pdq[1], seasonal_pdq[2]))
 print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[3]))
 print('SARIMAX: {} x {}'.format(pdq[2], seasonal_pdq[4]))
 
-
+#utilisation de la fonction SARIMAX de statsmodels pour l'adapter au modèle ARIMA saisonnier correspondant
+#j'ai utilisé SARIMAX car au début mon jeu de donnée été de sept 2017 à dec 2017 avec une itération chaque 1H où 2H en fesont 
+#la moy ( mean() ) des valeurs de l'intervale de 1H qui permet doivre aussi de bon résultat car dans une 1h la température varie de peut. 
 warnings.filterwarnings("ignore")
 for param in pdq:
     for param_seasonal in seasonal_pdq:
         try:
             mod = sm.tsa.statespace.SARIMAX(weather['t'],
-                                            order=param,
-                                            seasonal_order=param_seasonal,
+                                            order=param, #argument spécifie la (P, D, Q)
+                                            seasonal_order=param_seasonal, #argument spécifie la (P, D, Q, S)
                                             enforce_stationarity=False,
                                             enforce_invertibility=False)
 
@@ -52,8 +57,10 @@ for param in pdq:
             print('ARIMA{}x{}12 - AIC:{}'.format(param, param_seasonal, results.aic))
         except:
             continue
-        
-warnings.filterwarnings("ignore")        
+#Nous avons identifié l'ensemble de paramètres qui produit le modèle le mieux adapté à nos données de séries chronologiques
+#SARIMAX(1, 1, 1)x(1, 1, 1, 12)
+
+#warnings.filterwarnings("ignore")        
 mod = sm.tsa.statespace.SARIMAX(weather['t'],
                                 order=(1, 1, 1),
                                 seasonal_order=(1, 1, 1, 12),
@@ -64,9 +71,11 @@ results = mod.fit()
 
 print(results.summary().tables[1])
 
+#avant d'appliqué le modéle en exécuter des diagnostics de modèle.
 results.plot_diagnostics(figsize=(20, 12))
 plt.show()
 
+#Validation des prévisions
 pred = results.get_prediction(start=pd.to_datetime('2017-01-12'), dynamic=False)
 pred_ci = pred.conf_int()
 
