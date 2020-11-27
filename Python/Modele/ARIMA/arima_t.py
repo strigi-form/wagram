@@ -93,3 +93,11 @@ ax.set_ylabel('Temperature')
 plt.legend()
 plt.ylim(270,320)
 plt.show()
+
+
+weather_forecasted = pred.predicted_mean
+weather_truth = weather['t']['2016-01-01':]
+
+# mean square error
+mse = ((weather_forecasted - weather_truth) ** 2).mean()
+print('The Mean Squared Error of our forecasts is {}'.format(round(mse, 2)))
