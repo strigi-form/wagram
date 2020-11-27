@@ -12,16 +12,16 @@ plt.style.use('fivethirtyeight')
 
 WEATHER_STA = 14578001
 
-df = pd.read_csv("NW_Ground_Stations_2017.csv")
+df = pd.read_csv("NW_Ground_Stations_2016.csv")
 weather = df[(df['number_sta'] == WEATHER_STA)]
 weather['date'] = pd.to_datetime(df['date'])
 weather = weather.set_index('date')
-weather = weather['2017-01-01':'2017-1-12'].resample('6min').sum()
+weather = weather['2016-01-01':'2016-1-12'].resample('6min').sum()
 #weather = weather.resample('1H').mean()
 #weather = weather.fillna(weather['t'].bfill())
 print(weather['t'])
 
-plt.ylim(260,320)
+plt.ylim(270,320)
 plt.plot(weather['t'])
 plt.show()
 # weather['t'].plot(figsize=(20, 6))
@@ -77,10 +77,10 @@ results.plot_diagnostics(figsize=(20, 12))
 plt.show()
 
 #Validation des prévisions
-pred = results.get_prediction(start=pd.to_datetime('2017-01-12'), dynamic=False)
+pred = results.get_prediction(start=pd.to_datetime('2016-01-12'), dynamic=False)
 pred_ci = pred.conf_int()
 
-ax = weather['t']['2017-01-01':].plot(label='observed')
+ax = weather['t']['2016-01-01':].plot(label='observed')
 pred.predicted_mean.plot(ax=ax, label='One-step ahead Forecast', alpha=.7)
 
 ax.fill_between(pred_ci.index,
@@ -91,5 +91,5 @@ ax.fill_between(pred_ci.index,
 ax.set_xlabel('Date')
 ax.set_ylabel('Temperature')
 plt.legend()
-plt.ylim(260,320)
+plt.ylim(270,320)
 plt.show()
