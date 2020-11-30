@@ -197,8 +197,10 @@ pdq=list(itertools.product(p,d,q))
 #        continue
 
 #calcul d'erreur entre les expected et les predictions
-mean_squared_error(features,predictions)
-                                    
+#rmse=mean_squared_error(predictions,features)
+#print("rmse est:",rmse)
+rmse = math.sqrt(((predictions - features) ** 2).mean())
+print('The Mean Squared Error of our forecasts is {}'.format(round(rmse, 4)))
 #☻model = AutoReg(X_train, lags=1)
 #model_fit = model.fit()
 
