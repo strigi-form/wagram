@@ -3,6 +3,7 @@
 import warnings
 import itertools
 import pandas as pd
+import math
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 plt.style.use('fivethirtyeight')
@@ -99,5 +100,5 @@ weather_forecasted = pred.predicted_mean
 weather_truth = weather['t']['2016-01-01':]
 
 # mean square error
-mse = ((weather_forecasted - weather_truth) ** 2).mean()
-print('The Mean Squared Error of our forecasts is {}'.format(round(mse, 2)))
+rmse = math.sqrt(((weather_forecasted - weather_truth) ** 2).mean())
+print('The root Mean Squared Error of our forecasts is {}'.format(round(rmse, 4)))
