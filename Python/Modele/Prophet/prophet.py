@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 27 10:55:02 2020
+Created on Wed Nov 25 10:52:11 2020
 
-@author: atimassr
+@author: Guillaume D
+"""
+"""
+Client of LispTick TimeSerie Streaming Server
 """
 
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import lisptick
+import pandas as pd
+import numpy as np
 from fbprophet import Prophet
-
 import matplotlib.pyplot as plt
-#import seaborn as sns
-#from sklearn import preprocessing
-#import tensorflow as tf
-#import statsmodels as st
-#from statsmodels.tsa.holtwinters import SimpleExpSmoothing
-#from statsmodels.tsa.seasonal import STL
-#from sklearn.model_selection import train_test_split
-#from statsmodels.tsa.ar_model import AutoReg
 
-WEATHER_STA = 14578001
-TEST_WEATHER_STA = 22005003
+values = []
+times =[]
+
+def mean_absolute_pourcentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    #return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    return np.mean((y_true - y_pred)**2)
 
 def normalize(dataset, target, single_param=False):
     if single_param:
@@ -31,133 +31,77 @@ def normalize(dataset, target, single_param=False):
         dataNorm=((dataset-dataset.min())/(dataset.max()-dataset.min()))
 #         dataNorm[target]=dataset[target]
         return dataNorm
+    
+def print_value(reader, uuid, value):
+    global values, times, datas
+    if isinstance(value, lisptick.Point):
+        times.append(value.time)
+        values.append(value.i)
+    else:
+        print(value)
+    
 
-def segment(dataset, variable, window = 5000, future = 0):
-    data = []
-    labels = []
-    for i in range(len(dataset)):
-        start_index = i
-        end_index = i + window
-        future_index = i + window + future
-        if future_index >= len(dataset):
-            break
-        data.append(dataset[variable][i:end_index])
-        labels.append(dataset[variable][end_index:future_index])
-    return np.array(data), np.array(labels)
+host = "uat.lisptick.org"
+port = 12006
+datas = pd.DataFrame()
 
-def create_time_steps(length):
-    return list(range(-length, 0))
+    
+code = """
+    (timeserie @"t" "meteonet" "86027001" 2016-01-01 2016-02-15)
+    """
+lisptick_srv = lisptick.Socket(host, port)
 
-def multi_step_plot(history, true_future, prediction):
-    plt.figure(figsize=(12, 6))
-    num_in = create_time_steps(len(history))
-    num_out = len(true_future)
+lisptick_srv.walk_result(code, print_value)
+    
+    ## Création du DataFrame + utilisation de la date comme index
+datas = pd.DataFrame({'date' : times,
+                          'values' : values})
+    
+    ## Affichage
+print(datas)
+    
+    ## Traitement
+    
+datas['date'] = pd.to_datetime(datas['date'], format='%Y%m%d %H:%M')
+datas = datas.rename(columns={'date' : 'ds', 'values' : 'y'})
+datas.set_index('ds', inplace=True)
+#datas = normalize(datas, 'values', single_param=False)
+datas = datas.resample('60T').mean()
+    
+datas = datas.fillna(method='bfill')
 
-    plt.plot(num_in, np.array(history[:, 0]), label='History')
-    plt.plot(np.arange(num_out), np.array(true_future), label='True Future')
-    if prediction.any():
-        plt.plot(np.arange(num_out), np.array(prediction), 'ro', label='Predicted Future')
-    plt.legend(loc='upper left')
-    plt.show()
+errors = [0 for i in range(29)]
 
+for i in range(1,29) :
+    datas_train = datas.reset_index()[:i*24]
+    datas_test = datas.reset_index()[i*24:(i+1)*24]
+        
+    print("On en est à : ", i)
+    
+    if i < 7 :
+        m = Prophet(daily_seasonality=True)
+    else :
+        m = Prophet(daily_seasonality=True, weekly_seasonality=True)
+    
+    m.fit(datas_train)
+        
+    future = m.make_future_dataframe(periods=24, freq="H")
+    future.tail()
+        
+    forecast = m.predict(future)
+    forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
+    ##fig1 = m.plot(forecast) ## Affichage gérer par Prophet
+    
+    if i > 10 :      
+        fig, ax = plt.subplots(figsize=(10, 10))
+            
+        ax.plot(forecast['ds'][i*24:(i+1)*24], forecast['yhat'][i*24:(i+1)*24], color='purple')
+        ##ax.plot(datas_train['ds'], datas_train['y'], color='blue')
+        ax.plot(datas_test['ds'], datas_test['y'], color='red')
+        plt.title(str(i) + " jours de train")
+    
+    errors[i] = mean_absolute_pourcentage_error(datas_test['y'], forecast['yhat'][i*24:(i+1)*24])
+    print("Le taux d'erreur est de : ", round(errors[i],2) , "%")
 
-#df2016 = pd.read_csv(r'NW2016.csv')
-#df2017 = pd.read_csv(r'NW2017.csv')
-#df2018 = pd.read_csv(r'NW2018.csv')
-
-#weather = df2016[(df2016['number_sta'] == WEATHER_STA)]
-#weather = weather.append(df2017[(df2017['number_sta'] == WEATHER_STA)], ignore_index=True)
-#weather = weather.append(df2018[(df2018['number_sta'] == WEATHER_STA)], ignore_index=True)
-#weather['date'] = pd.to_datetime(weather['date'], format='%Y%m%d %H:%M')
-#weather.set_index('date', inplace=True)
-#weather['td'] = weather['td'].interpolate('linear')
-#weather['precip'] = weather['precip'].interpolate('linear')
-#weather['hu'] = weather['hu'].interpolate('linear')
-#weather['ff'] = weather['ff'].interpolate('linear')
-#weather = weather.drop(['number_sta', 'lat', 'lon', 'height_sta'], axis = 1)
-
-#weather_test = df2016[(df2016['number_sta'] == TEST_WEATHER_STA)]
-#weather_test = weather_test.append(df2017[(df2017['number_sta'] == TEST_WEATHER_STA)], ignore_index=True)
-#weather_test = weather_test.append(df2018[(df2018['number_sta'] == TEST_WEATHER_STA)], ignore_index=True)
-#weather_test['date'] = pd.to_datetime(weather_test['date'], format='%Y%m%d %H:%M')
-#weather_test.set_index('date', inplace=True)
-#weather_test['td'] = weather_test['td'].interpolate('linear')
-#weather_test['precip'] = weather_test['precip'].interpolate('linear')
-#weather_test['hu'] = weather_test['hu'].interpolate('linear')
-#weather_test['ff'] = weather_test['ff'].interpolate('linear')
-#weather_test = weather_test.drop(['number_sta', 'lat', 'lon', 'height_sta'], axis = 1)
-
-df = pd.read_csv('example_wp_log_peyton_manning.csv')
-df.head()
-#print(df)
-
-weather = pd.read_csv(r'weather.csv')
-
-weather['date'] = pd.to_datetime(weather['date'], format='%Y%m%d %H:%M')
-weather.set_index('date', inplace=True)
-weather = normalize(weather, 'td', single_param=False)
-
-weather_test = pd.read_csv(r'weather_test.csv')
-
-weather_test['date'] = pd.to_datetime(weather_test['date'], format='%Y%m%d %H:%M')
-weather_test.set_index('date', inplace=True)
-weather_test = normalize(weather_test, 'hu', single_param=False)
-
-
-weather_fb = weather.drop(['dd', 'ff', 'precip', 'hu', 't', 'psl'], axis = 1)
-weather_fb = weather_fb.resample('720T').mean()
-weather_fb = weather_fb.reset_index()
-
-weather_fb = weather_fb.rename(columns={'date' : 'ds', 'td' : 'y'})
-#weather_ds = weather.resample('720T').mean()
-#weather_test_ds = weather_test.resample('720T').mean()
-
-#weather_ds = weather_ds.fillna(method='bfill')
-#weather_test_ds = weather_ds.fillna(method='bfill')
-
-weather_ds = weather.resample('720T').mean()
-weather_test_ds = weather_test.resample('720T').mean()
-
-weather_ds = weather_ds.fillna(method='bfill')
-weather_test_ds = weather_ds.fillna(method='bfill')
-
-weather_fb_train = weather_fb[:60]
-weather_fb_test = weather_fb[60:120]
-
-#jour = 730
-#periodCustom = 90
-
-#weather_fb_train = weather_fb[:jour*2]
-#weather_fb_test = weather_fb[jour*2:jour*2+periodCustom*2]
-
-m = Prophet()
-m.fit(weather_fb_train)
-
-future = m.make_future_dataframe(periods=30)
-future.tail()
-
-forecast = m.predict(future)
-forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
-fig1 = m.plot(forecast)
-
-
-fig, ax = plt.subplots(figsize=(10, 10))
-
-ax.plot(forecast['ds'], forecast['yhat'], color='purple')
-ax.plot(weather_fb_train['ds'], weather_fb_train['y'], color='blue')
-ax.plot(weather_fb_test['ds'], weather_fb_test['y'], color='red')
-
-#HISTORY_LAG = 240
-#FUTURE_TARGET = 120
-
-#X_train, y_train = segment(weather_ds, "td", window = HISTORY_LAG, future = FUTURE_TARGET)
-#X_train = X_train.reshape(X_train.shape[0], HISTORY_LAG, 1)
-#y_train = y_train.reshape(y_train.shape[0], FUTURE_TARGET, 1)
-#print("Data shape: ", X_train.shape)
-#print("Tags shape: ", y_train.shape)
-
-#model = AutoReg(X_train, lags=1)
-#model_fit = model.fit()
-
-#ytest = model_fit.predict(len(X_train), len(X_train))
-#print(ytest)
+plt.subplots()
+plt.plot(range(29), errors)
