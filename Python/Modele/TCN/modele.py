@@ -42,7 +42,7 @@ meteo_test = meteo_test.transpose()
 #print(milk.head())
 
 #lookback_window = 12  # months.
-lookback_window = 10
+lookback_window = 20
 
 #milk = milk.values  # just keep np array here for simplicity.
 
@@ -92,14 +92,22 @@ ax1.set_title('Prédiction météo (on train)')
 ax1.legend(['predicted', 'actual'])
 plt.show()
 
+x_reinjection = x_pred[0:1]
+y_rejinjection = []
+for i in range(lookback_window) :
+    print("tour " + str(i))
+    print(x_reinjection)
+    p2 = model.predict(x_reinjection)
+    
+    print("Valeur à prévoir : " + str(y_pred[i][0]) + " / Valeur prédite :"  + str(p2[0][0]))
+    x_temp = np.delete(x_reinjection[0], 0, 0)
+    x_temp = np.append(x_temp, [[p2[0][0]]], 0)
+    x_reinjection[0] = x_temp
+    y_rejinjection.append(p2[0][0])
 
-## FULL PREDICTION
-p2 = model.predict(x_pred)
-
-fig2, ax2 = plt.subplots()
-
-ax2.plot(p2)
-ax2.plot(y_pred)
+fig2, ax2 = plt.subplots()    
+ax2.plot(y_rejinjection)
+ax2.plot(y_pred[0:lookback_window])
 ax2.set_title('Prédiction météo (full test)')
 ax2.legend(['predicted', 'actual'])
 plt.show()
